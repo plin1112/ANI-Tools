@@ -101,6 +101,72 @@ class nmsgenerator():
             a_xyz[i],a_bool[i] = self.get_random_structure()
         return a_xyz[a_bool]
 
+    # Generate a structure using random distribution
+    def __genrandomstruct2__(self, norm=None):
+        from numpy.random import default_rng
+        rng = default_rng()
+
+        # rdt = np.random.random(self.Nf+1)
+        rdt = rng.random(self.Nf+1)
+        rdt[0] = 0.0
+        # norm = np.random.normal()
+        if norm == None:
+            norm = rng.random(1.e-6, 1.0)
+        rdt = norm*np.sort(rdt)
+        rdt[self.Nf] = norm
+        dir_set = [-1.0, 1.0]
+        # rnd = np.random.random(self.Nf)
+
+        oxyz = self.xyz.copy()
+
+        for i in range(self.Nf):
+            Ki = mDynetoMet * self.fcc[i]
+            ci = rdt[i+1]-rdt[i]
+            # Sn = -1.0 if np.random.binomial(1,0.5,1) else 1.0
+            Sn = np.random.choice(dir_set)
+            Ei = 0.5 * Kb * float(self.Nf) * self.T * ci
+            Ri = Sn * MtoA * np.sqrt((2.0 * Ei)/Ki)
+            oxyz = oxyz + Ri * self.nmo[i]
+        return oxyz
+
+    # Call this to return a random structure using random distribution with extra check
+    def get_random_structure2(self):
+        gs = True
+        fnd = True
+        count = 0
+        while gs:
+            rxyz = self.__genrandomstruct2__()
+            gs = self.__check_atomic_distances__(rxyz) or self.__check_distance_from_eq__(rxyz)
+            if count > 100:
+                fnd=False
+                break
+            count += 1
+        return rxyz,fnd
+
+    # Call this to return a number of random structure using random distribution without checking
+    def get_Nrandom_structures2(self, N):
+        from numpy.random import default_rng
+        rng = default_rng()
+
+        a_xyz = np.empty((N,self.Na,3),dtype=np.float32)
+        norm_values = rng.uniform(size=N)
+        norm_values[0] = max(norm_values[0], 1.e-6)
+        for i in range(N):
+            a_xyz[i] = self.__genrandomstruct2__(norm=norm_values[i])
+        return a_xyz
+
+    # Call this to return a random structure using normal distribution without checking
+    def get_Nrandom_structures3(self, N):
+        from scipy.stats import truncnorm
+        # from math import sqrt
+
+        a_xyz = np.empty((N,self.Na,3),dtype=np.float32)
+        sigma = 1.0
+        norm_values = truncnorm.rvs(1.e-6/sigma, 1.0/sigma, loc=0., scale=sigma, size=N)
+        for i in range(N):
+            a_xyz[i] = self.__genrandomstruct2__(norm=norm_values[i])
+        return a_xyz
+
 class nmsgenerator_RXN():
     # xyz = initial min structure
     # nmo = normal mode displacements
